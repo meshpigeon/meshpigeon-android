@@ -62,6 +62,20 @@ testable (a small deviation from plan 02 with the contracts unchanged).
 ./gradlew test                   # all JVM unit tests
 ```
 
+### Google Maps key
+
+The Map tab uses the Maps SDK for Android, which needs an API key
+([enable the Maps SDK for Android](https://console.cloud.google.com) on your
+Google account, restrict it to this app's debug/release SHA-1). Add it to
+`local.properties` (gitignored):
+
+```
+MAPS_API_KEY=AIza…
+```
+
+Without a key the app builds and runs fine; the Map tab explains itself
+instead of showing a map.
+
 Run the app against the **desktop radio simulator** (no hardware needed):
 
 ```sh

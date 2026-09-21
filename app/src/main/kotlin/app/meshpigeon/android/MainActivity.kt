@@ -261,7 +261,19 @@ fun MeshPigeonApp(graph: AppGraph) {
                 )
             }
             composable(Destination.Map.route) {
-                MapPlaceholder()
+                val vm: MapViewModel = viewModel(
+                    factory = viewModelFactory {
+                        initializer {
+                            MapViewModel(graph.identities, graph.contacts, graph.conversations)
+                        }
+                    },
+                )
+                MapScreen(
+                    viewModel = vm,
+                    onOpenConversation = { id ->
+                        navController.navigate(Destination.Conversation.of(id))
+                    },
+                )
             }
             composable(Destination.Conversation.route) { entry ->
                 val conversationId = entry.arguments?.getString("conversationId")?.toLongOrNull() ?: return@composable
@@ -412,20 +424,6 @@ private fun AddIdentityDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit)
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-}
-
-@Composable
-private fun MapPlaceholder() {
-    // Map tab (07 §10): offline OSM tiles + contacts/repeater pins land in M3.
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center,
-    ) {
-        app.meshpigeon.ui.EmptyState(
-            title = "Map coming soon",
-            body = "Contacts with a location will appear here — no internet needed.",
-        )
-    }
 }
 
 /** Reconnect after phone restart (06 §6, opt-in via Settings toggle). */

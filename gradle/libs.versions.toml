@@ -12,6 +12,8 @@ coroutines = "1.11.0"
 datastore = "1.1.7"
 zxing = "3.5.3"
 camera = "1.4.2"
+mapsCompose = "7.0.0"
+playServicesMaps = "19.2.0"
 bouncycastle = "1.86"
 junit = "4.13.2"
 turbine = "1.2.1"
@@ -49,6 +51,8 @@ zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camera" }
 camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camera" }
 camera-view = { module = "androidx.camera:camera-view", version.ref = "camera" }
+maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
