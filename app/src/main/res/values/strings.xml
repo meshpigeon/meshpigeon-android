@@ -2,6 +2,6 @@
 <!-- All user-facing strings live here from day one (06 §7): additional
      languages are a translation task, not a refactor. -->
 <resources>
-    <color name="ic_launcher_background">#2E7D5B</color>
+    <color name="ic_launcher_background">#356F8C</color>
     <string name="app_name">MeshPigeon</string>
 </resources>

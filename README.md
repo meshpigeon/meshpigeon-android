@@ -1,3 +1,5 @@
+<p align="center"><img src="banner.png" width="480" alt="MeshPigeon — messages that find their way home"></p>
+
 # MeshPigeon App
 
 **Message anywhere. No towers, no internet.** MeshPigeon is a native Android

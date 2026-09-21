@@ -64,7 +64,7 @@ object RadioNotifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n: Notification = NotificationCompat.Builder(context, CHANNEL_MESSAGES)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_notification) // 🕊️ silhouette (brand)
             .setContentTitle(title)
             .setContentText(body)
             .setContentIntent(pending)
@@ -77,7 +77,7 @@ object RadioNotifications {
     fun connection(context: Context, text: String): Notification {
         ensureChannels(context)
         return NotificationCompat.Builder(context, CHANNEL_CONNECTION)
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("MeshPigeon")
             .setContentText(text)
             .setOngoing(true)

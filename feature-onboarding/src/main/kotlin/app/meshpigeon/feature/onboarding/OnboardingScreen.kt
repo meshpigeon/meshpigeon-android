@@ -136,6 +136,7 @@ fun OnboardingScreen(
 @Composable
 private fun WelcomeStep(onNext: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MeshPigeonSpacing.md)) {
+        Text("🕊️", style = MaterialTheme.typography.displayLarge) // brand mark
         Text("Welcome to MeshPigeon", style = MaterialTheme.typography.headlineMedium)
         Text(
             "Message anywhere without internet. Your messages hop across a " +
