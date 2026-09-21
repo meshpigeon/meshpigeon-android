@@ -1,31 +1,25 @@
 #!/usr/bin/env bash
-# Regenerate MeshPigeon brand assets from an emoji mark (default 🕊️ dove —
-# a dove is a pigeon, and it is carrying a message; decision recorded in
-# plans/meshpigeon/01-naming.md). Requires ImageMagick with pango and
-# Noto Color Emoji (/usr/share/fonts/noto/NotoColorEmoji.ttf).
+# Regenerate MeshPigeon brand assets from the committed vector mark
+# (scripts/dove-mark.svg — traced from the Noto Color Emoji dove U+1F54A,
+# olive branch removed; see 01-naming.md). Requires ImageMagick and
+# rsvg-convert. Outputs are committed; only rerun when changing the mark.
 #
 # Usage:
-#   scripts/gen-brand-assets.sh                       # 🕊️ on #356F8C
-#   EMOJI="🐦" BG="#3D7EB5" scripts/gen-brand-assets.sh   # different mark
-#
-# Outputs are committed; only rerun when changing the mark or sizes.
+#   scripts/gen-brand-assets.sh
+#   BG="#3D7EB5" scripts/gen-brand-assets.sh   # different background
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-EMOJI="${EMOJI:-🕊️}"
 BG="${BG:-#356F8C}"        # icon / logo / banner background
-FONT="Noto Color Emoji"
+MARK=scripts/dove-mark.svg
+SIL=scripts/dove-silhouette.svg
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# --- master renders ----------------------------------------------------------
-# Color mark (pango trims to the glyph box) + white silhouette from its alpha.
-magick -background none pango:"<span font=\"$FONT 400\">$EMOJI</span>" "$WORK/mark.png"
-wxh=$(magick identify -format '%wx%h' "$WORK/mark.png")
-magick "$WORK/mark.png" -alpha extract "$WORK/mask.png"
-magick -size "${wxh%%x*}x${wxh#*x}" xc:white "$WORK/mask.png" \
-    -compose CopyOpacity -composite "$WORK/sil.png"
+# Tight master raster renders (the SVG viewBox hugs the dove).
+rsvg-convert -w 640 "$MARK" -o "$WORK/mark.png"
+rsvg-convert -w 640 "$SIL" -o "$WORK/sil.png"
 
 # --- Android launcher + notification layers ----------------------------------
 center() { # src maxdim size out — mark centered on a transparent canvas
@@ -44,8 +38,6 @@ layer() { # name src scale — one drawable-* PNG per density (canvas = 108dp gr
     done
 }
 
-# The vector placeholder is replaced by per-density PNG layers.
-rm -f app/src/main/res/drawable/ic_launcher_foreground.xml
 layer ic_launcher_foreground "$WORK/mark.png" 0.62   # fits the 66dp safe zone
 layer ic_launcher_monochrome "$WORK/sil.png" 0.62    # Android 13 themed icon
 # Notification small icon: 24dp grid, mark at 80%.
@@ -109,5 +101,5 @@ if [ -d ../plans/meshpigeon ]; then
 fi
 banner banner.png 1200 300 220
 
-echo "done — launcher/notification layers, logo.png regenerated (EMOJI=$EMOJI BG=$BG)"
+echo "done — launcher/notification layers, logo.png regenerated (BG=$BG)"
 echo "banner.png + plans assets written next to the repo root"
