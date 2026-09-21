@@ -91,17 +91,18 @@ class AppGraph(private val context: Context) {
 
     /**
      * In-app repeater (03 §4): while a radio is connected, every eligible
-     * flood packet we hear is re-sent verbatim (dedup by tag). On by
-     * default — MeshPigeon phones ARE the mesh's repeaters; direct-routed
-     * traffic and packets addressed to us are never repeated. The drawer's
-     * Settings switch flips [setRepeaterEnabled].
+     * flood packet we hear is re-sent verbatim (dedup by tag). Off by
+     * default — enable it deliberately where there is no repeater
+     * infrastructure in range (e.g. a hiking group out of coverage);
+     * direct-routed traffic and packets addressed to us are never
+     * repeated. The drawer's Settings switch flips [setRepeaterEnabled].
      */
     val repeater = PacketRepeater(
         crypto,
         myHash = {
             identities.active().first()?.publicKey?.getOrNull(0)?.toInt()?.and(0xFF)
         },
-    ).also { it.enabled = prefs.getBoolean(PREF_REPEATER_ENABLED, true) }
+    ).also { it.enabled = prefs.getBoolean(PREF_REPEATER_ENABLED, false) }
 
     /** Persisted repeater on/off (the Settings switch reads this). */
     val repeaterEnabled = MutableStateFlow(repeater.enabled)

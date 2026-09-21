@@ -389,7 +389,9 @@ private fun SettingsDialog(graph: AppGraph, onDismiss: () -> Unit) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Repeat mesh traffic")
                     Text(
-                        "While a radio is connected, pass along messages heading to pigeons out of range.",
+                        "While a radio is connected, pass along messages heading to pigeons out of range. " +
+                            "Off by default — turn on where there's no repeater in reach, like a group hiking " +
+                            "out of coverage.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
