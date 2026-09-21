@@ -1,8 +1,13 @@
 package app.meshpigeon.android
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.app.PendingIntent
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,16 +43,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.meshpigeon.domain.RadioLinkKind
 import app.meshpigeon.domain.RadioTarget
 import app.meshpigeon.ui.MeshPigeonSpacing
+import app.meshpigeon.transport.RadioLink
 import app.meshpigeon.transport.RadioTarget as TransportTarget
 import app.meshpigeon.transport.TcpRadioAdapter
 import app.meshpigeon.transport.android.BleRadioAdapter
+import app.meshpigeon.transport.android.UsbCdcRadioAdapter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
  * Radio connect sheet (05 §2): scan → list → connect, then the foreground
- * service owns the link. v1 surfaces Wi-Fi (the desktop simulator for dev,
- * and Wi-Fi boards) and Bluetooth; USB lands with M4's app-driven repeater.
+ * service owns the link. Surfaces Wi-Fi (the desktop simulator for dev, and
+ * Wi-Fi boards), Bluetooth, and USB CDC devices (permission prompt per device).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +77,40 @@ fun RadioConnectSheet(graph: AppGraph, onDismiss: () -> Unit) {
     var wifiFound by remember { mutableStateOf(listOf<TransportTarget>()) }
     var bleBusy by remember { mutableStateOf(false) }
     var bleFound by remember { mutableStateOf(listOf<TransportTarget>()) }
+    var usbFound by remember { mutableStateOf(emptyList<UsbCandidate>()) }
+
+    // re-list USB devices on attach and when the permission prompt answers
+    var usbTick by remember { mutableStateOf(0) }
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, intent: Intent) {
+                if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED ||
+                    intent.action == UsbCdcRadioAdapter.ACTION_USB_PERMISSION
+                ) usbTick++
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbCdcRadioAdapter.ACTION_USB_PERMISSION)
+        }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+    LaunchedEffect(usbTick) {
+        val usb = context.getSystemService(Context.USB_SERVICE) as UsbManager
+        usbFound = usb.deviceList.values
+            .filter { UsbCdcRadioAdapter.isCdcDevice(it) }
+            .map { d ->
+                UsbCandidate(
+                    TransportTarget(
+                        persistentId = "usb:${d.vendorId}:${d.productId}",
+                        name = d.productName ?: "USB radio",
+                        link = RadioLink.Usb(d.vendorId, d.productId, d.deviceName),
+                    ),
+                    d,
+                )
+            }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -179,6 +221,33 @@ fun RadioConnectSheet(graph: AppGraph, onDismiss: () -> Unit) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             RadioRows(wifiFound) { connect(context, graph, scope, onDismiss, it, RadioLinkKind.WIFI) }
+
+            Text("USB radios", style = MaterialTheme.typography.titleSmall)
+            if (usbFound.isEmpty()) {
+                Text(
+                    "No USB radios attached",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            usbFound.forEach { candidate ->
+                val usb = context.getSystemService(Context.USB_SERVICE) as UsbManager
+                val granted = usb.hasPermission(candidate.device)
+                ListItem(
+                    headlineContent = { Text(candidate.target.name) },
+                    supportingContent = { Text(candidate.target.persistentId) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingContent = {
+                        TextButton(onClick = {
+                            if (granted) {
+                                connect(context, graph, scope, onDismiss, candidate.target, RadioLinkKind.USB)
+                            } else {
+                                requestUsbPermission(context, candidate.device)
+                            }
+                        }) { Text(if (granted) "Connect" else "Allow access") }
+                    },
+                )
+            }
         }
     }
 }
@@ -197,6 +266,25 @@ private fun RadioRows(targets: List<TransportTarget>, onConnect: (TransportTarge
             )
         }
     }
+}
+
+/** One attached CDC radio plus its UsbDevice (for the permission prompt). */
+private data class UsbCandidate(val target: TransportTarget, val device: UsbDevice)
+
+/** System prompt to grant this app access to the USB device; the answer
+ *  re-lists the section via the ACTION_USB_PERMISSION receiver. */
+private fun requestUsbPermission(context: Context, device: UsbDevice) {
+    val usb = context.getSystemService(Context.USB_SERVICE) as UsbManager
+    val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
+    usb.requestPermission(
+        device,
+        PendingIntent.getBroadcast(
+            context,
+            device.deviceId, // distinct request per device — PendingIntents dedupe
+            Intent(UsbCdcRadioAdapter.ACTION_USB_PERMISSION).setPackage(context.packageName),
+            flags,
+        ),
+    )
 }
 
 /** Save the target (preference list) and hand the link to the service. */

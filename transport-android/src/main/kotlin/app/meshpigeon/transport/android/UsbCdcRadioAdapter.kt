@@ -115,7 +115,7 @@ class UsbCdcRadioAdapter(
         val scope = kotlinx.coroutines.MainScope()
         scope.launch(Dispatchers.Main) {
             usb.deviceList.values
-                .filter { d -> d.getInterface(0).interfaceClass == UsbConstants.USB_CLASS_COMM }
+                .filter { isCdcDevice(it) }
                 .forEach { d ->
                     trySend(
                         RadioTarget(
@@ -137,5 +137,22 @@ class UsbCdcRadioAdapter(
         connection?.close()
         connection = null
         state.value = RadioLinkState(RadioLinkState.Phase.DISCONNECTED)
+    }
+
+    companion object {
+        /** Broadcast the permission prompt answers with (connect sheet). */
+        const val ACTION_USB_PERMISSION = "app.meshpigeon.transport.android.USB_PERMISSION"
+
+        /** CDC-ACM candidates: TinyUSB/Adafruit CDC (class 0x02 on the comm
+         *  interface, 0x0A on the data interface) and the ESP32-S3 native
+         *  USB-Serial-JTAG peripheral (vendor-specific class 0xFF — what
+         *  ARDUINO_USB_MODE=1 boards enumerate as). */
+        fun isCdcDevice(device: UsbDevice): Boolean =
+            (0 until device.interfaceCount).any { i ->
+                val c = device.getInterface(i).interfaceClass
+                c == UsbConstants.USB_CLASS_COMM ||
+                    c == UsbConstants.USB_CLASS_CDC_DATA ||
+                    c == UsbConstants.USB_CLASS_VENDOR_SPEC
+            }
     }
 }

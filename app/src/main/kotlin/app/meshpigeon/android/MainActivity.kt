@@ -34,6 +34,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
@@ -114,6 +115,7 @@ fun MeshPigeonApp(graph: AppGraph) {
     val identities by graph.identities.all().collectAsStateWithLifecycle(initialValue = emptyList())
     val activeIdentity by graph.identities.active().collectAsStateWithLifecycle(initialValue = null)
     var showAddIdentity by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
 
     // first-run gate: without a profile, start at onboarding (07 §2)
     var hasProfile by remember { mutableStateOf<Boolean?>(null) }
@@ -149,6 +151,7 @@ fun MeshPigeonApp(graph: AppGraph) {
                     scope.launch { drawerState.close() }
                     showConnectSheet = true
                 },
+                onSettings = { showSettings = true },
             )
         },
     ) {
@@ -305,6 +308,10 @@ fun MeshPigeonApp(graph: AppGraph) {
             onDismiss = { showAddIdentity = false },
         )
     }
+
+    if (showSettings) {
+        SettingsDialog(graph = graph, onDismiss = { showSettings = false })
+    }
 }
 
 /** Left drawer (07 §1): identity switcher, connect radio, settings. */
@@ -315,6 +322,7 @@ private fun MeshPigeonDrawer(
     onSelect: (Long) -> Unit,
     onAdd: () -> Unit,
     onConnectRadio: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     ModalDrawerSheet {
         Column(modifier = Modifier.padding(MeshPigeonSpacing.md), verticalArrangement = Arrangement.spacedBy(MeshPigeonSpacing.xs)) {
@@ -346,11 +354,42 @@ private fun MeshPigeonDrawer(
             TextButton(onClick = onConnectRadio) {
                 Text("Connect radio…")
             }
-            TextButton(onClick = { /* settings land with M3 */ }) {
+            TextButton(onClick = onSettings) {
                 Text("Settings")
             }
         }
     }
+}
+
+/** Settings (drawer): the in-app repeater on/off toggle (03 §4). */
+@Composable
+private fun SettingsDialog(graph: AppGraph, onDismiss: () -> Unit) {
+    val repeaterEnabled by graph.repeaterEnabled.collectAsStateWithLifecycle()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Settings") },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MeshPigeonSpacing.md),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Repeat mesh traffic")
+                    Text(
+                        "While a radio is connected, pass along messages heading to pigeons out of range.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = repeaterEnabled,
+                    onCheckedChange = { graph.setRepeaterEnabled(it) },
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
 }
 
 /** Name prompt for a new identity (per-identity channels/conversations follow). */

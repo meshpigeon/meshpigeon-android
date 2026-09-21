@@ -19,6 +19,7 @@ import app.meshpigeon.transport.RadioLinkState
 import app.meshpigeon.transport.RadioSession
 import app.meshpigeon.transport.TcpRadioAdapter
 import app.meshpigeon.transport.android.BleRadioAdapter
+import app.meshpigeon.transport.android.UsbCdcRadioAdapter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -90,8 +91,8 @@ class RadioConnectionService : Service() {
 
         val adapter = adapterFor(target)
         if (adapter == null) {
-            graph.connection.value = AppGraph.ConnectionState(detail = "${target.name}: link not supported yet")
-            updateNotification("${target.name} — link not supported yet")
+            graph.connection.value = AppGraph.ConnectionState(detail = "${target.name}: could not open the link")
+            updateNotification("${target.name} — could not open the link")
             return
         }
 
@@ -195,8 +196,9 @@ class RadioConnectionService : Service() {
         )
     }
 
-    /** Adapter per saved link kind. USB lands with the connect sheet's USB row.
-     *  BLE runtime permissions are granted by the connect sheet before this runs.
+    /** Adapter per saved link kind. USB requires a granted device permission —
+     *  the connect sheet's "Allow access" prompt obtains it. BLE runtime
+     *  permissions are granted by the connect sheet before this runs.
      */
     @SuppressLint("MissingPermission")
     private fun adapterFor(target: RadioTarget): RadioAdapter? {
@@ -207,7 +209,13 @@ class RadioConnectionService : Service() {
             RadioLinkKind.WIFI -> TcpRadioAdapter(host, port).also { it.connectBlocking() }
             RadioLinkKind.BLE -> BleRadioAdapter(applicationContext, target.linkAddr)
                 .also { if (!it.connectBlocking()) return null }
-            RadioLinkKind.USB -> null // USB CDC connect needs a picked UsbDevice (M4)
+            RadioLinkKind.USB -> {
+                val usb = getSystemService(Context.USB_SERVICE) as android.hardware.usb.UsbManager
+                val device = usb.deviceList[target.linkAddr] ?: return null
+                if (!usb.hasPermission(device)) return null
+                UsbCdcRadioAdapter(applicationContext, device)
+                    .also { if (!it.connectBlocking()) return null }
+            }
         }
     }
 

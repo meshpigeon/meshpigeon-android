@@ -2,6 +2,7 @@ package app.meshpigeon.android
 
 import android.app.Application
 import android.content.Context
+import androidx.core.content.edit
 import androidx.room.Room
 import app.meshpigeon.data.KeystoreSecretSealer
 import app.meshpigeon.data.MeshPigeonDatabase
@@ -50,6 +51,8 @@ class MeshPigeonApp : Application() {
 }
 
 class AppGraph(private val context: Context) {
+    private val prefs = context.getSharedPreferences("meshpigeon", Context.MODE_PRIVATE)
+
     val appContext: Context = context.applicationContext
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val crypto: MeshCrypto = BouncyMeshCrypto()
@@ -90,14 +93,24 @@ class AppGraph(private val context: Context) {
      * In-app repeater (03 §4): while a radio is connected, every eligible
      * flood packet we hear is re-sent verbatim (dedup by tag). On by
      * default — MeshPigeon phones ARE the mesh's repeaters; direct-routed
-     * traffic and packets addressed to us are never repeated.
+     * traffic and packets addressed to us are never repeated. The drawer's
+     * Settings switch flips [setRepeaterEnabled].
      */
     val repeater = PacketRepeater(
         crypto,
         myHash = {
             identities.active().first()?.publicKey?.getOrNull(0)?.toInt()?.and(0xFF)
         },
-    )
+    ).also { it.enabled = prefs.getBoolean(PREF_REPEATER_ENABLED, true) }
+
+    /** Persisted repeater on/off (the Settings switch reads this). */
+    val repeaterEnabled = MutableStateFlow(repeater.enabled)
+
+    fun setRepeaterEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(PREF_REPEATER_ENABLED, enabled) }
+        repeater.enabled = enabled
+        repeaterEnabled.value = enabled
+    }
 
     val sendMessage = SendMessage(
         identities, contacts, conversations, messages, outbox, channels,
@@ -144,6 +157,8 @@ class AppGraph(private val context: Context) {
         }
 
     companion object {
+        private const val PREF_REPEATER_ENABLED = "repeater_enabled"
+
         fun of(context: Context): AppGraph = (context.applicationContext as MeshPigeonApp).graph
     }
 }
