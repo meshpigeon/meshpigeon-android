@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: jhuebert/meshpigeon-firmware
+          repository: meshpigeon/meshpigeon-firmware
           path: firmware
       - uses: actions/setup-java@v4
         with:
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: jhuebert/meshpigeon-firmware
+          repository: meshpigeon/meshpigeon-firmware
           path: firmware
       - uses: actions/setup-java@v4
         with:

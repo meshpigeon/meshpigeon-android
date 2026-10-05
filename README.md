@@ -5,7 +5,7 @@
 **Message anywhere. No towers, no internet.** MeshPigeon is a native Android
 messaging app for mesh radio: install, connect a radio, start messaging. All
 protocol, identity, storage, and UX intelligence lives here — the radio
-([meshpigeon-firmware](https://github.com/jhuebert/meshpigeon-firmware)) is a dumb,
+([meshpigeon-firmware](https://github.com/meshpigeon/meshpigeon-firmware)) is a dumb,
 durable packet store.
 
 ```
